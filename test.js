@@ -25,28 +25,11 @@ exec(cmd, function(err, stdout, stderr) {
       drives.push(drive);
       match = myregexp.exec(stdout);
     }
-    //FIXME make me asynchronous
-    // each(i = 0; i < drives.length; i++) {
     loopDrives(drives); 
-    //  var drive = drives[i];
-    //  var files = []; 
-    //  if(drive.name != null && drive.name !== ''){
-    //    var path = '/Volumes/'+drive.name;
-    //    if (fs.existsSync(path)) {
-    //        if(fs.lstatSync(path).isSymbolicLink()){
-    //          path = fs.readlinkSync(path);
-    //        }
-            // drive.files.concat(listFiles(path));
-    //        console.log("Listing files in "+path);
-    //        listFiles(path);
-    //    }
-    //    console.log(drive.name + ':'+JSON.stringify(drive));
-    //  }
-    //}
 });
-var x = 0;
+var driveIterator = 0;
 var loopDrives = function(arr) {
-  var drive = arr[x];
+  var drive = arr[driveIterator];
   if(drive != null){
     var hasName = drive.name != null;
     var hasName2 = drive.name !== "";
@@ -54,8 +37,8 @@ var loopDrives = function(arr) {
       var path = '/Volumes/'+drive.name;
       if (fs.existsSync(path)) {
         listFiles(path, function(err){
-            x++;
-            if(x < arr.length) {
+            driveIterator++;
+            if(driveIterator < arr.length) {
               loopDrives(arr);
             }
             else{
@@ -64,56 +47,53 @@ var loopDrives = function(arr) {
         });
       }
       else{
-         x++;
+         driveIterator++;
          loopDrives(arr);
       }
     }
     else{
-      x++;
+      driveIterator++;
       loopDrives(arr);
     }
   }
 }
-var loopDrives2 = function(arr) {
-    console.log(JSON.stringify(arr[0]));
-    var drive = arr[x];
-    console.log("Inside *"+drive.name);
-    if(drive.name != null && drive.name !== ''){
-        console.log("In here");
-        var path = '/Volumes/'+drive.name;
-        if (fs.existsSync(path)) {
-          console.out("Test "+path);
-          if(fs.lstatSync(path).isSymbolicLink()){
-              console.log("Reading");
-              path = fs.readlinkSync(path);
-          }
-          console.log("Listing files");
-          listFiles(path, function(err){
-            console.log("Made it back");
-            x++;
-            if(x < arr.length) {
-              loopDrives(arr);   
-            }
-            else{
-              console.log("Finished");
-            }
-          });
-        }
-     }
-     else{
-       
-       x++;
-       loopDrives(arr);
-     }
+// var fileItterator = 0;
+var loopFiles = function(arr, path, fileItterator, callback) {
+  var file = arr[fileItterator];
+  if(file != null){
+      console.log(file);
+      fileItterator++;
+      var fullName = path+"/"+file;
+      if(isDirectory(fullName)){
+         fullName = getDirectoryName(fullName);
+         var files = fs.readdirSync(fullName);
+         console.log(JSON.stringify(files));
+         loopFiles(files, fullName, 0, function(){
+           loopFiles(arr, path, fileItterator, callback);
+         }); 
+      }
+      else{
+        loopFiles(arr, path, fileItterator, callback);
+      }
+  }
+  else{
+    callback();
+  }
 }
-        // console.log(drive.name + ':'+JSON.stringify(drive));
-        // listFiles(,function(){
 
 // var listFiles = function(path, callback) {
 //   console.log(path);
 //  callback();
 // }
 var listFiles= function(path, callback){
+  var files = [];
+  if(isDirectory(path)){
+    path = getDirectoryName(path);
+    var files = fs.readdirSync(path);
+    loopFiles(files,path,0,callback);
+  }
+}
+var listFiles2= function(path, callback){
   var files = [];
   if(isDirectory(path)){
     path = getDirectoryName(path);
