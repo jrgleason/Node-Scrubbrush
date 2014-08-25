@@ -28,23 +28,41 @@ var walk = function(dir, done) {
           // var escaped = escaped.replace(/\&/g, "\\&");
           exec('openssl sha1 "'+file+'"', { maxBuffer: (200*10240) }, function(p_err, p_stdout, p_stderr) {
             if(p_err) {
-              console.log(p_err.message);
+              fs.appendFile('errors.list', fileInfo.name+":"+fileInfo.hash+":"+p_err.message+"\r\n", function (err) {
+                next();
+              })
             } else if(p_stderr) {
               console.log(p_stderr);
             } else {
               var myregexp = /=\s?(\w*)/g;
               var match = myregexp.exec(p_stdout);
               fileInfo.hash = "Fake hash";
-              while (match != null) {
+              if (match != null) {
                 // console.log(match[1]);
                 fileInfo.hash = match[1];
-                match = myregexp.exec(p_stdout);
+                // match = myregexp.exec(p_stdout);
+                var searchValue = fileInfo.name+":"+fileInfo.hash;
+                exec('grep "'+searchValue+'" ./files.list', { maxBuffer: (200*10240) }, function(p_err, p_stdout, p_stderr) {
+                  if(!p_stdout){
+                    fs.appendFile('files.list', searchValue+"\r\n", function (err) {
+                      next();
+                    })
+                  }
+                  else{
+                    console.log("grep:*"+p_stdout+"*");
+                    fs.appendFile('duplicates.list', file+"\r\n", function (err) {
+                      next();
+                    })
+                    next();
+                  }
+                });
               }
-              // results.push(fileInfo);
+              else{
+                fs.appendFile('reallyfunkystuff.list', fileInfo.name+"\r\n", function (err) {
+                  next();
+                })
+              }
             }
-            fs.appendFile('files.list', fileInfo.name+":"+fileInfo.hash+"\r\n", function (err) {
-              next(); 
-            })
           });
         }
       });
@@ -57,9 +75,9 @@ if(typeof process.argv[2] === "undefined") {
 }
 //argv[2] is set
 else {
-  // var tempFile = fs.openSync(filename, 'r');
+  // var tempFile = fs.openSync('files.list', 'r');
   // fs.closeSync(tempFile);
-  // fs.unlinkSync(filename);
+  // fs.unlinkSync('files.list');
   walk(process.argv[2], function(err, list){
     console.log("FINISHED");
   });
